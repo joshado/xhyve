@@ -1,0 +1,93 @@
+
+file 'multiboot.c'
+file 'multiboot.o' => 'multiboot.c' do
+  sh "gcc -m32 -c multiboot.c -o multiboot.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra"
+end
+
+file 'multiboot.bin' => 'multiboot.o' do
+  sh "gcc -Wl,-no_pie -m32 -ffreestanding -o multiboot.bin multiboot.o"
+end
+
+task :clean do
+  sh "rm -f *.o"
+end
+
+task :qemu => 'multiboot.bin' do
+  sh "qemu-system-i386 -net nic -net user,bootfile=pxe,tftp=./ -boot n"
+end
+
+
+# Using specification document:
+#    https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#OS-image-format
+class MultibootImage
+  def initialize(path)
+    @path = path
+  end
+
+  FLAG_BITS = {
+    0  => "Boot modules must be page (4K) aligned",
+    1  => "mem_* fields of Multiboot information structure must be provided",
+    2  => "video mode table info must be made available",
+    16 => "Multiboot image placement headers are valid"
+  }
+
+  def parse
+    @buffer = File.read(@path)
+
+    # > An OS image must contain an additional header called Multiboot header,
+    # > besides the headers of the format used by the OS image. The Multiboot
+    # > header must be contained completely within the first 8192 bytes of the
+    # > OS image, and must be longword (32-bit) aligned. In general, it should
+    # > come as early as possible, and may be embedded in the beginning of the
+    # > text segment after the real executable header.
+
+    # Scan through the first 8192 bytes, at 32-bit hops, looking for the magic,
+    # then calculate and verify the checksum.
+    header_index = (1..2048).find do |i|
+      fragment = @buffer[i*4,12]
+      raise "Ran out of file looking for multiboot header" if fragment.nil?
+
+      @magic, @flags, @checksum = fragment.unpack("LLL")
+
+      puts (@magic + @flags + @checksum) % (2**32) if @magic == 0x1BADB002
+
+      @magic == 0x1BADB002 &&
+        (@magic + @flags + @checksum) % (2**32) == 0
+    end
+    raise "Cannot find multiboot header in first 8192 bytes" unless header_index
+
+    puts "Header at #{header_index*4}"
+    puts "Magic: #{@magic.to_s(16)}"
+    puts "Flags: #{@flags.to_s(16)}"
+    puts "Checksum: #{@checksum.to_s(16)}"
+
+    puts "Flags set: (#{@flags.to_s(2)})"
+    FLAG_BITS.each do |bit,str|
+      puts " * bit #{bit}: #{str}" if (@flags & (1<<bit)) > 0
+    end
+
+    # If there is an image offset header, parse it!
+    if @flags & (1<<16) > 0
+
+      puts "Parsing offset header:"
+      _, _ , _, @header_addr, @load_addr, @load_end_addr, @bss_end_addr, @entry_addr = @buffer[header_index * 4, 32].unpack("LLLLLLLL")
+
+      puts " * Header addr is    #{@header_addr.to_s(16)}"
+      puts " * Load addr is      #{@load_addr.to_s(16)}"
+      puts " * Load end addr is  #{@load_end_addr.to_s(16)}"
+      puts " * Bss end addr is   #{@bss_end_addr.to_s(16)}"
+      puts " * Entry addr is     #{@entry_addr.to_s(16)}"
+    end
+  end
+end
+
+task :sanity do
+  image = MultibootImage.new('illumos-unix')
+  image.parse
+end
+
+task :check => 'multiboot.bin' do
+  puts "Checking 'multiboot.bin'..."
+  image = MultibootImage.new('multiboot.bin')
+  image.parse
+end
