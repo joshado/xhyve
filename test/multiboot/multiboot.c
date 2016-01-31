@@ -5,7 +5,7 @@ void multiboot_entry(void);
 void main(void) {
   asm (
     "start:"
-    ".align 8\n\t"
+    ".align 4\n\t"
     "multiboot_header:"
     ".long 0x1BADB002\n\t"
     ".long 0x10003\n\t"
@@ -21,10 +21,7 @@ void main(void) {
   while(1) { }
 }
 
-#define VIDEO                   0xB8000
-#define COLUMNS                 80
-#define LINES                   24
-#define ATTRIBUTE               7
+
 
 static volatile unsigned char *video;
 
@@ -41,6 +38,10 @@ void sleep(int count) {
   uint64_t entry = rdtsc();
   while(rdtsc() < entry + count) { }
 }
+
+#define VIDEO                   0xB8000
+#define COLUMNS                 80
+#define LINES                   24
 
 void multiboot_entry() {
   int i = 0;
