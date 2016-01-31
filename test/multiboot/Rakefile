@@ -12,10 +12,14 @@ task :clean do
   sh "rm -f *.o"
 end
 
+QEMU_CMD = "qemu-system-x86_64 -serial stdio -net nic -net user,bootfile=multiboot.bin,tftp=./ -boot n"
 task :qemu => 'multiboot.bin' do
-  sh "qemu-system-i386 -net nic -net user,bootfile=multiboot.bin,tftp=./ -boot n"
+  sh "#{QEMU_CMD} -nographic"
 end
 
+task :qemu_graphics => 'multiboot.bin' do
+  sh QEMU_CMD
+end
 
 # Using specification document:
 #    https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#OS-image-format
