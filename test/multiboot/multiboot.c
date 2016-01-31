@@ -28,9 +28,24 @@ void main(void) {
 
 static volatile unsigned char *video;
 
+typedef unsigned long long int uint64_t;
+
+static inline uint64_t rdtsc()
+{
+    uint64_t ret;
+    asm volatile ( "rdtsc" : "=A"(ret) );
+    return ret;
+}
+
+void sleep(int count) {
+  uint64_t entry = rdtsc();
+  while(rdtsc() < entry + count) { }
+}
+
 void multiboot_entry() {
   int i = 0;
   char v = 0;
+
   while(1) {
     video = (unsigned char *) VIDEO;
 
@@ -41,5 +56,6 @@ void multiboot_entry() {
     v++;
 
 
+    sleep(100000000);
   }
 }
