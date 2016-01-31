@@ -13,7 +13,7 @@ task :clean do
 end
 
 task :qemu => 'multiboot.bin' do
-  sh "qemu-system-i386 -net nic -net user,bootfile=pxe,tftp=./ -boot n"
+  sh "qemu-system-i386 -net nic -net user,bootfile=multiboot.bin,tftp=./ -boot n"
 end
 
 

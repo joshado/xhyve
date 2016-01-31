@@ -1,4 +1,0 @@
-#!ipxe
-
-kernel multiboot.bin
-boot
