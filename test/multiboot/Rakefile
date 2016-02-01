@@ -36,7 +36,9 @@ class MultibootImage
   }
 
   def parse
-    @buffer = File.read(@path)
+    File.open(@path, "rb") do |f|
+      @buffer = f.read(8192)
+    end
 
     # > An OS image must contain an additional header called Multiboot header,
     # > besides the headers of the format used by the OS image. The Multiboot
@@ -47,7 +49,7 @@ class MultibootImage
 
     # Scan through the first 8192 bytes, at 32-bit hops, looking for the magic,
     # then calculate and verify the checksum.
-    header_index = (1..8192).find do |i|
+    header_offset = (0..8192).find do |i|
       fragment = @buffer[i,12]
       raise "Ran out of file looking for multiboot header" if fragment.nil?
 
@@ -56,10 +58,10 @@ class MultibootImage
       @magic == 0x1BADB002 &&
         (@magic + @flags + @checksum) % (2**32) == 0
     end
-    raise "Cannot find multiboot header in first 8192 bytes" unless header_index
-    raise "Header offset is not 32-bit aligned (#{header_index % 4}) :(" unless header_index % 4 == 0
+    raise "Cannot find multiboot header in first 8192 bytes" unless header_offset
+    raise "Header offset is not 32-bit aligned (0x#{header_offset.to_s(16)} #{header_offset % 4}) :(" unless header_offset % 4 == 0
 
-    puts "Header at #{header_index}"
+    puts "Header at #{header_offset}"
     puts "Magic: #{@magic.to_s(16)}"
     puts "Flags: #{@flags.to_s(16)}"
     puts "Checksum: #{@checksum.to_s(16)}"
@@ -73,7 +75,7 @@ class MultibootImage
     if @flags & (1<<16) > 0
 
       puts "Parsing offset header:"
-      _, _ , _, @header_addr, @load_addr, @load_end_addr, @bss_end_addr, @entry_addr = @buffer[header_index, 32].unpack("LLLLLLLL")
+      _, _ , _, @header_addr, @load_addr, @load_end_addr, @bss_end_addr, @entry_addr = @buffer[header_offset, 32].unpack("LLLLLLLL")
 
       puts " * Header addr is    #{@header_addr.to_s(16)}"
       puts " * Load addr is      #{@load_addr.to_s(16)}"

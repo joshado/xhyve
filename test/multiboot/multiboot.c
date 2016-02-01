@@ -4,7 +4,7 @@ void main(void);
 asm (
   "start:\n\t"
   "multiboot_header:\n\t"
-  ".balign 4\n\t"
+  ".p2align 2\n\t"
   ".long 0x1BADB002\n\t"
   ".long 0x10003\n\t"
   ".long 0xe4514ffb\n\t"
@@ -15,7 +15,6 @@ asm (
   ".long   _main\n\t"   // entry_addr
   ".space 65536\n\t"
 );
-
 
 #include <stdint.h>
 
@@ -30,7 +29,7 @@ static inline uint8_t inb(uint16_t port)
     return ret;
 }
 
-static volatile uint8_t *video;
+// static volatile uint8_t *video;
 
 
 static inline uint64_t rdtsc()
@@ -57,8 +56,8 @@ void com_write(char v)
   // wait for the transmit buffer to empty
   while((inb(COM1 + 5) & 0x20) == 0 ) { }
 
-    // write the value!
-    outb(COM1, v);
+  // write the value!
+  outb(COM1, v);
 }
 
 void com_write_string(char* string) 
@@ -70,22 +69,27 @@ void com_write_string(char* string)
 
 void main() 
 {
-  int i = 0;
-  char v = 0;
 
   com_write_string("\n");
   com_write_string("Booting tinykernel!\n");
 
-  while(1) {
-    video = (unsigned char *) VIDEO;
-
-    for (i = 0; i < COLUMNS * LINES * 2; i++) {
-      *(video + i) = v++;
-
-    }
-    v++;
-    com_write_string("Loop!\n");
-
+  while(1) { 
+    com_write_string("Hello!\n");
     sleep(100000000);
   }
+  // int i = 0;
+  // char v = 0;
+
+  // while(1) {
+  //   video = (unsigned char *) VIDEO;
+
+  //   for (i = 0; i < COLUMNS * LINES * 2; i++) {
+  //     *(video + i) = v++;
+
+  //   }
+  //   v++;
+  //   com_write_string("Loop!\n");
+
+  //   sleep(100000000);
+  // }
 }
