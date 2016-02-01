@@ -776,7 +776,7 @@ fail:
 	fprintf(stderr, "Invalid firmware argument\n"
 		"    -f kexec,'kernel','initrd','\"cmdline\"'\n"
 		"    -f fbsd,'userboot','boot volume','\"kernel env\"'\n"
-		"    -f multiboot,'kernel',module:module:...,cmdline");
+		"    -f multiboot,'kernel',module:module:...,cmdline\n");
 
 	return -1;
 }
