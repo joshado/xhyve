@@ -184,7 +184,7 @@ uint64_t multiboot(void) {
   // xh_vm_set_register(0, VM_REG_GUEST_DS, 0x18);
   // xh_vm_set_register(0, VM_REG_GUEST_ES, 0x18);
   // xh_vm_set_register(0, VM_REG_GUEST_SS, 0x18);
-  xh_vm_set_register(0, VM_REG_GUEST_CR0, 0x21); /* enable protected mode */
+  xh_vm_set_register(0, VM_REG_GUEST_CR0, 0x21);
   // xh_vm_set_register(0, VM_REG_GUEST_RBP, 0);
   // xh_vm_set_register(0, VM_REG_GUEST_RDI, 0);
   // xh_vm_set_register(0, VM_REG_GUEST_RBX, 0);
