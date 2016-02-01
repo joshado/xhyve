@@ -13,7 +13,6 @@ asm (
   ".long   0\n\t"                 // load_end_addr
   ".long   0\n\t"                 // bss_end_addr
   ".long   _main\n\t"   // entry_addr
-  ".space 65536\n\t"
 );
 
 #include <stdint.h>
