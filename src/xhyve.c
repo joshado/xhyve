@@ -65,6 +65,7 @@
 #include <xhyve/xmsr.h>
 #include <xhyve/rtc.h>
 
+#include <xhyve/firmware/multiboot.h>
 #include <xhyve/firmware/kexec.h>
 #include <xhyve/firmware/fbsd.h>
 
@@ -728,6 +729,8 @@ firmware_parse(const char *opt) {
 		fw_func = kexec;
 	} else if (strncmp(fw, "fbsd", strlen("fbsd")) == 0) {
 		fw_func = fbsd_load;
+	} else if (strncmp(fw, "multiboot", strlen("multiboot")) == 0 ) {
+		fw_func = multiboot;
 	} else {
 		goto fail;
 	}
@@ -761,6 +764,8 @@ firmware_parse(const char *opt) {
 	} else if (fw_func == fbsd_load) {
 		/* FIXME: let user set boot-loader serial device */
 		fbsd_init(opt1, opt2, opt3, NULL);
+	} else if (fw_func == multiboot) {
+		multiboot_init(opt1, opt2, opt3);
 	} else {
 		goto fail;
 	}
@@ -770,7 +775,8 @@ firmware_parse(const char *opt) {
 fail:
 	fprintf(stderr, "Invalid firmware argument\n"
 		"    -f kexec,'kernel','initrd','\"cmdline\"'\n"
-		"    -f fbsd,'userboot','boot volume','\"kernel env\"'\n");
+		"    -f fbsd,'userboot','boot volume','\"kernel env\"'\n"
+		"    -f multiboot,'kernel',module:module:...,cmdline");
 
 	return -1;
 }
