@@ -85,7 +85,7 @@ class MultibootImage
 end
 
 task :sanity do
-  image = MultibootImage.new('illumos-unix')
+  image = MultibootImage.new('unix')
   image.parse
 end
 
