@@ -1,5 +1,9 @@
+#include <stdint.h>
+#include <stdarg.h>
 
-void main(void);
+void main(uint32_t eax, uint32_t ebx);
+
+static uint32_t eax_value;
 
 asm (
   "start:\n\t"
@@ -17,14 +21,24 @@ asm (
   "movl    $(stack + 0x4000), %esp\n\t"
   "pushl   $0\n\t"
   "popf\n\t"
+  "pushl %ebx\n\t"
+  "pushl %eax\n\t"
   "call     _main\n\t"
   "hlt\n\t"
   "stack:"
   ".skip 0x4000"
 );
 
-#include <stdint.h>
-#include <stdarg.h>
+struct multiboot_info {
+  uint32_t flags;
+  uint32_t mem_lower;
+  uint32_t mem_upper;
+  uint32_t boot_device;
+  char* cmdline_addr;
+  uint32_t mods_count;
+  uint32_t mods_addr;
+};
+
 
 static inline void outb(uint16_t port, uint8_t val)
 {
@@ -119,10 +133,41 @@ void printf(char* format, ...) {
   }
 }
 
-void main() 
+int parse_multiboot_structure(void* p) {
+  struct multiboot_info* h = (struct multiboot_info*)p;
+  
+  printf("    - flags are 0x%x\n", h->flags);
+
+  if( h->flags & (1<<2)) {
+    printf("    - command_line is '%s'\n", h->cmdline_addr);
+  }
+  return 0;
+}
+
+void main(uint32_t eax, uint32_t ebx) 
 {
+  printf("\n");
+  printf("Checking machine state:\n");
+  printf(" * EAX must contain 0x2BADB002\n");
+  if( eax != 0x2BADB002 ) goto failed;
 
+  printf(" * EBX must contain pointer to multiboot info\n");
+  if( parse_multiboot_structure((void*)ebx) ) goto failed;
 
-
-
+  // printf("\nTODO:\n");
+  // printf(" * CS must be 32-bit read/execute code segment with offset 0 / limit 0xFFFFFFFF\n");
+  // printf(" * DS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
+  // printf(" * ES must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
+  // printf(" * FS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
+  // printf(" * GS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
+  // printf(" * SS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
+  // printf(" * A20 gate must be enabled\n");
+  // printf(" * CR0 - bit 31 must be cleared, bit 0 must be set\n");
+  // printf(" * EFLAGS - bit 17 must be cleared, bit 9 must be cleared\n");
+  // printf("\n");
+  // printf("Looking for multiboot header\n");
+  printf("SUCH PASS!\n");
+  return;
+failed:
+  printf("     ^^ fail! :-(\n");
 }

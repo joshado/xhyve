@@ -50,6 +50,16 @@ struct multiboot_mem_header {
   uint32_t entry_addr;
 };
 
+struct multiboot_info  {
+  uint32_t flags;
+  uint32_t mem_lower;
+  uint32_t mem_upper;
+  uint32_t boot_device;
+  uint32_t cmdline_addr;
+  uint32_t mods_count;
+  uint32_t mods_addr;
+} ;
+
 static FILE *kernel;
 static struct multiboot_header header;
 static struct multiboot_mem_header mem_header;
@@ -65,12 +75,14 @@ static unsigned long image_length;
 static unsigned long physical_load;
 static unsigned long physical_header;
 
+static char* boot_cmdline;
 
 void multiboot_init(char *kernel_path, char *module_spec, char *cmdline) {
   printf("multiboot_init(%s, %s, %s)\n", kernel_path, module_spec, cmdline);
   kernel = fopen(kernel_path, "r");
 
   uint8_t found = 0;
+  boot_cmdline = cmdline;
 
   fseek(kernel, 0L, SEEK_SET);
 
@@ -146,6 +158,9 @@ fail:
   printf("Failed to load multiboot kernel!\n");
   exit(1);
 }
+
+
+
 uint64_t multiboot(void) {
 
   printf("multiboot();\n");
@@ -163,20 +178,32 @@ uint64_t multiboot(void) {
   fseek(kernel, (long)image_load, SEEK_SET);
   if( 1 != fread(host_load_addr, image_length, 1, kernel))
     goto fail;
-
   printf("Done!\n");
 
+  // write out the multiboot info struct
+  void* p = (char*)((uintptr_t)host_load_addr + image_length);
+  struct multiboot_info* mb_info = (struct multiboot_info*)p;
+  p = (void*) ((uintptr_t)p +  sizeof(struct multiboot_info));
+  mb_info->flags = 0x0;
 
-  // gdt_entry = ((uint64_t *) (memory.base + BASE_GDT));
-  // gdt_entry[0] = 0x0000000000000000; /* null */
-  // gdt_entry[1] = 0x0000000000000000; /* null */
-  // gdt_entry[2] = 0x00cf9a000000ffff; /* code */
-  // gdt_entry[3] = 0x00cf92000000ffff; /* data */
+  if( boot_cmdline ) {
+    strcpy((char*)p, boot_cmdline);
+
+    mb_info->flags |= (1<<2);
+    mb_info->cmdline_addr = (uint32_t)((uintptr_t)p - (uintptr_t)gpa_map);
+    printf("cmdline addr is %x\n", mb_info->cmdline_addr);
+    p = (void*) ((uintptr_t)p +  strlen(boot_cmdline) + 1);
+  }
 
   xh_vcpu_reset(0);
 
-  // xh_vm_set_desc(0, VM_REG_GUEST_GDTR, BASE_GDT, 0x1f, 0);
   xh_vm_set_desc(0, VM_REG_GUEST_CS, 0, 0xffffffff, 0xc09b);
+  xh_vm_set_register(0, VM_REG_GUEST_CR0, 0x21);
+  xh_vm_set_register(0, VM_REG_GUEST_RAX, 0x2BADB002);
+  xh_vm_set_register(0, VM_REG_GUEST_RBX, (uintptr_t)mb_info - (uintptr_t)gpa_map);
+  xh_vm_set_register(0, VM_REG_GUEST_RIP, mem_header.entry_addr);
+
+  // xh_vm_set_desc(0, VM_REG_GUEST_GDTR, BASE_GDT, 0x1f, 0);
   // xh_vm_set_desc(0, VM_REG_GUEST_DS, 0, 0xffffffff, 0xc093);
   // xh_vm_set_desc(0, VM_REG_GUEST_ES, 0, 0xffffffff, 0xc093);
   // xh_vm_set_desc(0, VM_REG_GUEST_SS, 0, 0xffffffff, 0xc093);
@@ -184,13 +211,12 @@ uint64_t multiboot(void) {
   // xh_vm_set_register(0, VM_REG_GUEST_DS, 0x18);
   // xh_vm_set_register(0, VM_REG_GUEST_ES, 0x18);
   // xh_vm_set_register(0, VM_REG_GUEST_SS, 0x18);
-  xh_vm_set_register(0, VM_REG_GUEST_CR0, 0x21);
+  
   // xh_vm_set_register(0, VM_REG_GUEST_RBP, 0);
   // xh_vm_set_register(0, VM_REG_GUEST_RDI, 0);
-  // xh_vm_set_register(0, VM_REG_GUEST_RBX, 0);
   // xh_vm_set_register(0, VM_REG_GUEST_RFLAGS, 0x2);
   // xh_vm_set_register(0, VM_REG_GUEST_RSI, BASE_ZEROPAGE);
-  xh_vm_set_register(0, VM_REG_GUEST_RIP, mem_header.entry_addr);
+  
   return mem_header.entry_addr;
 
 fail:
