@@ -85,12 +85,14 @@ static unsigned long physical_load;
 static unsigned long physical_header;
 
 static char* boot_cmdline;
+static char* kernel_path_string;
 
 void multiboot_init(char *kernel_path, char *module_spec, char *cmdline) {
   printf("multiboot_init(%s, %s, %s)\n", kernel_path, module_spec, cmdline);
   kernel = fopen(kernel_path, "r");
 
   uint8_t found = 0;
+  kernel_path_string = kernel_path;
   boot_cmdline = cmdline;
   modulestring = module_spec;
 
@@ -268,12 +270,12 @@ uint64_t multiboot(void) {
   }
 
   if( boot_cmdline ) {
-    strcpy((char*)p, boot_cmdline);
+    unsigned long length = (unsigned long)sprintf((char*)p,"%s %s", kernel_path_string, boot_cmdline);
 
     mb_info->flags |= (1<<2);
     mb_info->cmdline_addr = (uint32_t)((uintptr_t)p - (uintptr_t)gpa_map);
     printf("cmdline addr is %x\n", mb_info->cmdline_addr);
-    p = (void*) ((uintptr_t)p +  strlen(boot_cmdline) + 1);
+    p = (void*) ((uintptr_t)p +  length + 1);
   }
 
   mb_info->flags |= (1<<0);

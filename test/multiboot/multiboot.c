@@ -157,11 +157,11 @@ int parse_multiboot_structure(void* p) {
     uint32_t i;
 
     for (i = 0, mod = (multiboot_module_t *) h->mods_addr; i < h->mods_count; i++, mod++) {
-      char* p = mod->mod_start;
+      char* p = (char*)mod->mod_start;
       printf("     > mod_start = 0x%x, mod_end = 0x%x, cmdline = '%s'\n", (unsigned) mod->mod_start, (unsigned) mod->mod_end, (char *) mod->cmdline);
       printf("     | %x %x %x %x %x %x %x %x\n", *p++, *p++, *p++, *p++, *p++, *p++, *p++, *p++);
       printf("     | ...\n");
-      p = mod->mod_end - 8;
+      p =(char*) mod->mod_end - 8;
       printf("     | %x %x %x %x %x %x %x %x\n", *p++, *p++, *p++, *p++, *p++, *p++, *p++, *p++);
     }
   }
