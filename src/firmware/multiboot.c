@@ -195,22 +195,27 @@ uint64_t multiboot(void) {
     p = (void*) ((uintptr_t)p +  strlen(boot_cmdline) + 1);
   }
 
+  mb_info->flags |= (1<<0);
+  mb_info->mem_lower = (uint32_t)640*1024;
+  mb_info->mem_upper = (uint32_t)xh_vm_get_lowmem_size();
+
   xh_vcpu_reset(0);
 
-  xh_vm_set_desc(0, VM_REG_GUEST_CS, 0, 0xffffffff, 0xc09b);
+  
   xh_vm_set_register(0, VM_REG_GUEST_CR0, 0x21);
   xh_vm_set_register(0, VM_REG_GUEST_RAX, 0x2BADB002);
   xh_vm_set_register(0, VM_REG_GUEST_RBX, (uintptr_t)mb_info - (uintptr_t)gpa_map);
   xh_vm_set_register(0, VM_REG_GUEST_RIP, mem_header.entry_addr);
 
   // xh_vm_set_desc(0, VM_REG_GUEST_GDTR, BASE_GDT, 0x1f, 0);
-  // xh_vm_set_desc(0, VM_REG_GUEST_DS, 0, 0xffffffff, 0xc093);
-  // xh_vm_set_desc(0, VM_REG_GUEST_ES, 0, 0xffffffff, 0xc093);
-  // xh_vm_set_desc(0, VM_REG_GUEST_SS, 0, 0xffffffff, 0xc093);
-  // xh_vm_set_register(0, VM_REG_GUEST_CS, 0x10);
-  // xh_vm_set_register(0, VM_REG_GUEST_DS, 0x18);
-  // xh_vm_set_register(0, VM_REG_GUEST_ES, 0x18);
-  // xh_vm_set_register(0, VM_REG_GUEST_SS, 0x18);
+  xh_vm_set_desc(0, VM_REG_GUEST_CS, 0, 0xffffffff, 0xc09b);
+  xh_vm_set_desc(0, VM_REG_GUEST_DS, 0, 0xffffffff, 0xc093);
+  xh_vm_set_desc(0, VM_REG_GUEST_ES, 0, 0xffffffff, 0xc093);
+  xh_vm_set_desc(0, VM_REG_GUEST_SS, 0, 0xffffffff, 0xc093);
+  xh_vm_set_register(0, VM_REG_GUEST_CS, 0x10);
+  xh_vm_set_register(0, VM_REG_GUEST_DS, 0x18);
+  xh_vm_set_register(0, VM_REG_GUEST_ES, 0x18);
+  xh_vm_set_register(0, VM_REG_GUEST_SS, 0x18);
   
   // xh_vm_set_register(0, VM_REG_GUEST_RBP, 0);
   // xh_vm_set_register(0, VM_REG_GUEST_RDI, 0);

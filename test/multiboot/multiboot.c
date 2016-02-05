@@ -3,8 +3,6 @@
 
 void main(uint32_t eax, uint32_t ebx);
 
-static uint32_t eax_value;
-
 asm (
   "start:\n\t"
   "multiboot_header:\n\t"
@@ -50,9 +48,6 @@ static inline uint8_t inb(uint16_t port)
     asm volatile ( "inb %[port], %[ret]" : [ret] "=a"(ret) : [port] "Nd"(port) );
     return ret;
 }
-
-// static volatile uint8_t *video;
-
 
 static inline uint64_t rdtsc()
 {
@@ -161,7 +156,8 @@ void main(uint32_t eax, uint32_t ebx)
   // printf(" * FS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
   // printf(" * GS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
   // printf(" * SS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
-  // printf(" * A20 gate must be enabled\n");
+  printf(" * A20 gate must be enabled\n");
+  printf("    - %x\n", inb(0x92));
   // printf(" * CR0 - bit 31 must be cleared, bit 0 must be set\n");
   // printf(" * EFLAGS - bit 17 must be cleared, bit 9 must be cleared\n");
   // printf("\n");
