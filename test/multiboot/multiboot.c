@@ -128,13 +128,42 @@ void printf(char* format, ...) {
   }
 }
 
+
+struct multiboot_mod_list
+{
+  uint32_t mod_start;
+  uint32_t mod_end;
+  uint32_t cmdline;
+  uint32_t pad;
+};
+typedef struct multiboot_mod_list multiboot_module_t;
+
 int parse_multiboot_structure(void* p) {
   struct multiboot_info* h = (struct multiboot_info*)p;
   
   printf("    - flags are 0x%x\n", h->flags);
 
+  if( h->flags & (1<<0)) {
+    printf("    - low-memory:   %i\n", h->mem_lower);
+    printf("    - upper-memory: %i\n", h->mem_upper);  
+  }
   if( h->flags & (1<<2)) {
     printf("    - command_line is '%s'\n", h->cmdline_addr);
+  }
+  if( h->flags & (1<<4)) {
+    printf("    - module count: %i\n", h->mods_count);
+    printf("    - module addr: %x\n", h->mods_addr);
+    multiboot_module_t *mod;
+    uint32_t i;
+
+    for (i = 0, mod = (multiboot_module_t *) h->mods_addr; i < h->mods_count; i++, mod++) {
+      char* p = mod->mod_start;
+      printf("     > mod_start = 0x%x, mod_end = 0x%x, cmdline = '%s'\n", (unsigned) mod->mod_start, (unsigned) mod->mod_end, (char *) mod->cmdline);
+      printf("     | %x %x %x %x %x %x %x %x\n", *p++, *p++, *p++, *p++, *p++, *p++, *p++, *p++);
+      printf("     | ...\n");
+      p = mod->mod_end - 8;
+      printf("     | %x %x %x %x %x %x %x %x\n", *p++, *p++, *p++, *p++, *p++, *p++, *p++, *p++);
+    }
   }
   return 0;
 }

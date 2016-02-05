@@ -58,9 +58,18 @@ struct multiboot_info  {
   uint32_t cmdline_addr;
   uint32_t mods_count;
   uint32_t mods_addr;
-} ;
+};
+
+struct multiboot_module_entry {
+  uint32_t addr_start;
+  uint32_t addr_end;
+  uint32_t cmdline;
+  uint32_t pad;
+};
 
 static FILE *kernel;
+static char* modulestring;
+
 static struct multiboot_header header;
 static struct multiboot_mem_header mem_header;
 
@@ -83,6 +92,7 @@ void multiboot_init(char *kernel_path, char *module_spec, char *cmdline) {
 
   uint8_t found = 0;
   boot_cmdline = cmdline;
+  modulestring = module_spec;
 
   fseek(kernel, 0L, SEEK_SET);
 
@@ -159,7 +169,7 @@ fail:
   exit(1);
 }
 
-
+#define ALIGN_4K(p) (void*)((((uintptr_t)p/4096) + 1)*4096)
 
 uint64_t multiboot(void) {
 
@@ -185,6 +195,77 @@ uint64_t multiboot(void) {
   struct multiboot_info* mb_info = (struct multiboot_info*)p;
   p = (void*) ((uintptr_t)p +  sizeof(struct multiboot_info));
   mb_info->flags = 0x0;
+
+
+  // write out all the modules!!
+  char *s, *m, *name, *v;
+
+  s = m = modulestring;
+
+
+  // count the number of modules
+  mb_info->mods_count = 0;
+  if(modulestring) {
+    while(*m != 0x0) {
+      while(*m != 0x0 && *m != ':') { m++; }
+      if( *m == ':') m++;
+      printf("module\n");
+      mb_info->mods_count++;
+    }
+  }
+  printf("There are %i modules\n", mb_info->mods_count);
+  
+  struct multiboot_module_entry *table = (struct multiboot_module_entry*)p;
+  mb_info->mods_addr =(uint32_t)( (uintptr_t)p - (uintptr_t)gpa_map);
+
+  p = (void*) ((uintptr_t)p + sizeof(struct multiboot_module_entry) * mb_info->mods_count);
+  
+  if(modulestring) {
+
+    mb_info->flags |= (1<<4);
+    printf("Writing out modules!\n");
+
+    s = m = modulestring;
+    while(*m != 0x0) {
+      while(*m != 0x0 && *m != ':') { m++; }
+      printf("p=%lu ",(uintptr_t) p);
+      p = ALIGN_4K(p);
+      printf("aligned p = %lu\n", (uintptr_t)p);
+      memcpy(p, s, (m - s) + 1);
+      name = p;
+      p =  (void*) ((uintptr_t)p + ((uintptr_t)m-(uintptr_t)s));
+      v = (char*)p;
+      *v = 0x0;
+      p =  (void*) ((uintptr_t)p + 1);
+      
+      printf("Got a module: %s\n", name);
+
+      uint32_t module_size;
+
+      printf("Got module '%s'\n", name);
+
+      FILE* module = fopen(name, "r");
+      fseek(module, 0x0, SEEK_END);
+      module_size = (uint32_t)ftell(module);
+      fseek(module, 0x0, SEEK_SET);
+
+      printf("  size=%i bytes\n", module_size);
+
+      p = ALIGN_4K(p);
+      table->cmdline = (uint32_t)(name - (uintptr_t)gpa_map);
+      table->addr_start = (uint32_t)((uint32_t)p - (uintptr_t)gpa_map);
+      if( 1 != fread(p, module_size, 1, module)) perror("Failed to read module");
+      p = (void*)((uintptr_t)p + module_size);
+      table->addr_end = (uint32_t)((uint32_t)p - (uintptr_t)gpa_map);
+
+      fclose(module);
+
+      table++;
+
+      if( *m == ':') m++;
+      s = m;
+    }
+  }
 
   if( boot_cmdline ) {
     strcpy((char*)p, boot_cmdline);
