@@ -10,6 +10,11 @@ CMDLINE="earlyprintk=serial console=ttyS0"
 #BOOTVOLUME="/somepath/somefile.{img | iso}"
 #KERNELENV=""
 
+# Multiboot
+#KERNEL="test/multiboot/multiboot.bin"
+#MODLIST=""
+#CMDLINE="Hello, world!"
+
 MEM="-m 1G"
 #SMP="-c 2"
 #NET="-s 2:0,virtio-net"
@@ -25,3 +30,6 @@ build/xhyve $ACPI $MEM $SMP $PCI_DEV $LPC_DEV $NET $IMG_CD $IMG_HDD $UUID -f kex
 
 # FreeBSD
 #build/xhyve $ACPI $MEM $SMP $PCI_DEV $LPC_DEV $NET $IMG_CD $IMG_HDD $UUID -f fbsd,$USERBOOT,$BOOTVOLUME,"$KERNELENV"
+
+# Multiboot
+#build/xhyve $ACPI $MEM $SMP $PCI_DEV $LPC_DEV $NET $IMG_CD $IMG_HDD $UUID -f multiboot,$KERNEL,$MODLIST,"$CMDLINE"
