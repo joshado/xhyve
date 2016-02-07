@@ -37,7 +37,7 @@ task :clean do
   sh "rm -f *.o"
 end
 
-QEMU_CMD = "qemu-system-x86_64 -serial stdio -net nic -net user,bootfile=multiboot.bin,tftp=./ -boot n"
+QEMU_CMD = "qemu-system-x86_64 -net nic -net user,bootfile=multiboot.bin,tftp=./ -boot n"
 task :qemu => 'multiboot.bin' do
   sh "#{QEMU_CMD} -nographic"
 end

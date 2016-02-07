@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
- 
+
 #include <stdint.h>
 #include <stdarg.h>
 
@@ -81,6 +81,20 @@ static inline uint64_t rdtsc()
     asm volatile ( "rdtsc" : "=A"(ret) );
     return ret;
 }
+static inline uint32_t read_cr0()
+{
+    uint32_t ret;
+    asm volatile ( "movl %%cr0,%0" : "=a" (ret));
+    return ret;
+}
+
+
+// static inline uint32_t read_eflags()
+// {
+//     uint16_t ret;
+// how does one do this??!
+//     return ret;
+// }
 
 void sleep(int count) 
 {
@@ -185,13 +199,35 @@ int parse_multiboot_structure(void* p) {
     for (i = 0, mod = (multiboot_module_t *) h->mods_addr; i < h->mods_count; i++, mod++) {
       char* p = (char*)mod->mod_start;
       printf("     > mod_start = 0x%x, mod_end = 0x%x, cmdline = '%s'\n", (unsigned) mod->mod_start, (unsigned) mod->mod_end, (char *) mod->cmdline);
-      printf("     | %x %x %x %x %x %x %x %x\n", *p++, *p++, *p++, *p++, *p++, *p++, *p++, *p++);
+      printf("     | %x %x %x %x %x %x %x %x\n", p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]);
       printf("     | ...\n");
-      p =(char*) mod->mod_end - 8;
-      printf("     | %x %x %x %x %x %x %x %x\n", *p++, *p++, *p++, *p++, *p++, *p++, *p++, *p++);
+      p =(char*) mod->mod_end;
+      printf("     | %x %x %x %x %x %x %x %x\n",p[-7],p[-6],p[-5],p[-4],p[-3],p[-2],p[-1],p[0]);
     }
   }
   return 0;
+}
+
+struct gdt_entry {
+  uint16_t limit1;
+  uint16_t base1;
+  uint8_t base2;
+  uint8_t access;
+  uint8_t limit2_flags;
+  uint8_t base3;
+};
+
+void print_gdt_entry(struct gdt_entry *entry) {
+  uint32_t base;
+  uint32_t limit;
+  uint8_t flags;
+  uint8_t access;
+printf("%x\n", entry->access);
+  access = entry->access;
+  base = entry->base1 + (entry->base2<<16) + (entry->base3<<24);
+  limit = entry->limit1 + ((entry->limit2_flags&0xF)<<16);
+  flags = (entry->limit2_flags&0xF0) >> 4;
+  printf("  base=%x limit=%x flags=%x access=%x\n", base, limit, flags, access);
 }
 
 void main(uint32_t eax, uint32_t ebx) 
@@ -204,6 +240,45 @@ void main(uint32_t eax, uint32_t ebx)
   printf(" * EBX must contain pointer to multiboot info\n");
   if( parse_multiboot_structure((void*)ebx) ) goto failed;
 
+  printf(" * A20 gate - 0x92 bit 1 must be enabled\n");
+  printf("    - %x\n", inb(0x92));
+
+  if((inb(0x92) & (1<<1))== 0x0) goto failed;
+
+  int cr0 = read_cr0();
+  printf(" * CR0 register - bit 31 must be cleared, bit 0 must be set (%i)\n", cr0);
+  if( (cr0 & ((1<<31) | (1<<0))) != (1<<0) ) goto failed;
+
+  // int eflags = read_eflags();
+  // printf(" * EFLAGS - bit 17 must be cleared, bit 9 must be cleared (%i)\n", eflags);
+  // if( (eflags & ((1<<17) | (1<<9))) != 0 ) goto failed;
+
+
+  // load the GDT base and limit
+  char value[6];
+  asm volatile("SGDTL %0" : "=m" (value));
+  uint16_t gdt_limit = *(uint16_t*)(value);
+  uint32_t gdt_base = *(uint32_t*)(value+2) ;
+
+  int val = 0;  
+  asm volatile("movl %%cs, %0" : "=r" (val));
+  printf(" CS=%x %x\n", val, gdt_base + val);
+  print_gdt_entry((struct gdt_entry*)(gdt_base + val));
+  asm volatile("movl %%ds, %0" : "=r" (val));
+  printf(" DS=%x\n", val);
+  print_gdt_entry((struct gdt_entry*)(gdt_base + val));
+  asm volatile("movl %%es, %0" : "=r" (val));
+  printf(" ES=%x\n", val);
+  print_gdt_entry((struct gdt_entry*)(gdt_base + val));
+  asm volatile("movl %%fs, %0" : "=r" (val));
+  printf(" FS=%x\n", val);
+  print_gdt_entry((struct gdt_entry*)(gdt_base + val));
+  asm volatile("movl %%gs, %0" : "=r" (val));
+  printf(" GS=%x\n", val);
+  print_gdt_entry((struct gdt_entry*)(gdt_base + val));
+  asm volatile("movl %%ss, %0" : "=r" (val));
+  printf(" SS=%x\n", val);
+  print_gdt_entry((struct gdt_entry*)(gdt_base + val));
   // printf("\nTODO:\n");
   // printf(" * CS must be 32-bit read/execute code segment with offset 0 / limit 0xFFFFFFFF\n");
   // printf(" * DS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
@@ -211,12 +286,9 @@ void main(uint32_t eax, uint32_t ebx)
   // printf(" * FS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
   // printf(" * GS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
   // printf(" * SS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");
-  printf(" * A20 gate must be enabled\n");
-  printf("    - %x\n", inb(0x92));
-  // printf(" * CR0 - bit 31 must be cleared, bit 0 must be set\n");
-  // printf(" * EFLAGS - bit 17 must be cleared, bit 9 must be cleared\n");
+  
   // printf("\n");
-  // printf("Looking for multiboot header\n");
+
   printf("SUCH PASS!\n");
   return;
 failed:
