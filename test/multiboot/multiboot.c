@@ -260,6 +260,8 @@ void main(uint32_t eax, uint32_t ebx)
   uint16_t gdt_limit = *(uint16_t*)(value);
   uint32_t gdt_base = *(uint32_t*)(value+2) ;
 
+  printf("gdt limit is %i\n", gdt_limit);
+
   int val = 0;  
   asm volatile("movl %%cs, %0" : "=r" (val));
   printf(" CS=%x %x\n", val, gdt_base + val);
@@ -279,6 +281,7 @@ void main(uint32_t eax, uint32_t ebx)
   asm volatile("movl %%ss, %0" : "=r" (val));
   printf(" SS=%x\n", val);
   print_gdt_entry((struct gdt_entry*)(gdt_base + val));
+
   // printf("\nTODO:\n");
   // printf(" * CS must be 32-bit read/execute code segment with offset 0 / limit 0xFFFFFFFF\n");
   // printf(" * DS must be 32-bit read/write data segment with offset 0 / limit 0xFFFFFFFF\n");

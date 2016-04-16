@@ -421,6 +421,24 @@ vmexit_vmx(struct vm_exit *vme, int *pvcpu)
 	    vme->u.vmx.exit_qualification);
 	fprintf(stderr, "\tinst_type\t\t%d\n", vme->u.vmx.inst_type);
 	fprintf(stderr, "\tinst_error\t\t%d\n", vme->u.vmx.inst_error);
+	
+	printf("exit_bogus=%llu exit_bogus_switch=%llu htl=%llu, pause=%llu mtrap=%llu inst_emul=%llu switch=%llu direct=%llu\n",stats.vmexit_bogus
+	,stats.vmexit_bogus_switch
+	,stats.vmexit_hlt
+	,stats.vmexit_pause
+	,stats.vmexit_mtrap
+	,stats.vmexit_inst_emul
+	,stats.cpu_switch_rotate
+	,stats.cpu_switch_direct);
+
+
+	// dump 1M!
+	void* map  = xh_vm_map_gpa(0, xh_vm_get_lowmem_size());
+
+	FILE* core =fopen("/tmp/core", "w");
+	fwrite(map, 1024*1024*100, 1, core);
+	fclose(core);
+	printf("dumped core to /tmp/core\n");
 	return (VMEXIT_ABORT);
 }
 
